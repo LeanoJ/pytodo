@@ -1,7 +1,7 @@
 # PYTODO
 
 ## Description
-PYTODO is a simple command-line based task management application. It allows users to add, list, remove, complete, prioritize, and set due dates for tasks. The application supports multilingual functionality (English and German) and provides color-coded output for better readability.
+PYTODO is a simple command-line based task management application. It allows users to add, list, remove, complete, prioritize, and set due dates for tasks. The application supports multilingual functionality (English and German) and provides color-coded output for better readability. Tasks are stored in a SQLite database for efficient data management.
 
 ## Features
 - Add new tasks
@@ -18,6 +18,7 @@ PYTODO is a simple command-line based task management application. It allows use
 - Filter tasks by status (completed/not completed) or priority (high/medium/low)
 - Multilingual support (English and German)
 - Color-coded output for better readability
+- Efficient data storage using SQLite
 
 ## Installation
 1. Clone the repository:

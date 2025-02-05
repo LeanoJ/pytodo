@@ -1,5 +1,7 @@
 import json
 import os
+import sqlite3
+from datetime import datetime
 from colorama import init, Fore, Style
 
 tasks = []
@@ -42,7 +44,8 @@ translations = {
         "enter_sort_option": "Enter sort option (priority/due_date/status): ",
         "enter_filter_option": "Enter filter option (completed/not_completed/high/medium/low): ",
         "confirm_delete": "Are you sure you want to delete this task? (y/n): ",
-        "delete_cancelled": "Task deletion cancelled."
+        "delete_cancelled": "Task deletion cancelled.",
+        "invalid_date": "Invalid date. Please enter in YYYY-MM-DD format."
     },
     "de": {
         "menu": "\n=== TODO-Listen-Manager ===",
@@ -78,7 +81,8 @@ translations = {
         "enter_sort_option": "Sortieroption eingeben (priorität/fälligkeitsdatum/status): ",
         "enter_filter_option": "Filteroption eingeben (erledigt/nicht_erledigt/hoch/mittel/niedrig): ",
         "confirm_delete": "Sind Sie sicher, dass Sie diese Aufgabe löschen möchten? (j/n): ",
-        "delete_cancelled": "Aufgabenlöschung abgebrochen."
+        "delete_cancelled": "Aufgabenlöschung abgebrochen.",
+        "invalid_date": "Ungültiges Datum. Bitte im Format JJJJ-MM-TT eingeben."
     }
 }
 
@@ -87,11 +91,30 @@ translations = {
 def t(key):
     return translations[language].get(key, key)
 
+# Initialize the database
+# Initialisiert die Datenbank
+def create_database():
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('''CREATE TABLE IF NOT EXISTS tasks 
+                      (id INTEGER PRIMARY KEY, 
+                       description TEXT, 
+                       priority TEXT, 
+                       due_date TEXT, 
+                       status TEXT)''')
+    conn.commit()
+    conn.close()
+
 # Adds a new task with the given description.
 # Fügt eine neue Aufgabe mit der angegebenen Beschreibung hinzu.
 def add_task(description):
-    tasks.append({"description": description, "completed": False, "priority": None, "due_date": None})
-    save_tasks()
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO tasks (description, priority, due_date, status) 
+                      VALUES (?, ?, ?, ?)''', (description, None, None, 'not_completed'))
+    conn.commit()
+    conn.close()
+    colored_print(t("tasks_saved"), Fore.GREEN)
 
 # Prints text in a specified color.
 # Druckt Text in einer angegebenen Farbe.
@@ -101,41 +124,58 @@ def colored_print(text, color=Fore.WHITE):
 # Lists all tasks with their status, priority, and due date.
 # Listet alle Aufgaben mit ihrem Status, ihrer Priorität und ihrem Fälligkeitsdatum auf.
 def list_tasks():
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tasks')
+    tasks = cursor.fetchall()
+    conn.close()
     if not tasks:
         colored_print(t("no_tasks"), Fore.YELLOW)
         return
-    for i, task in enumerate(tasks):
-        status = "✓" if task["completed"] else " "
-        priority = f"[{task['priority']}]" if task["priority"] else ""
-        due_date = f"(Due: {task['due_date']})" if task["due_date"] else ""
-        color = Fore.GREEN if task["completed"] else Fore.WHITE
-        if not task["completed"] and task["priority"] == "high":
+    for task in tasks:
+        status = "✓" if task[4] == 'completed' else " "
+        priority = f"[{task[2]}]" if task[2] else ""
+        due_date = f"(Due: {task[3]})" if task[3] else ""
+        color = Fore.GREEN if task[4] == 'completed' else Fore.WHITE
+        if task[4] != 'completed' and task[2] == "high":
             color = Fore.RED
-        elif not task["completed"] and task["priority"] == "medium":
+        elif task[4] != 'completed' and task[2] == "medium":
             color = Fore.YELLOW
-        colored_print(f"{i+1}. [{status}] {task['description']} {priority} {due_date}", color)
+        colored_print(f"{task[0]}. [{status}] {task[1]} {priority} {due_date}", color)
 
 # Removes a task by its ID with confirmation.
 # Entfernt eine Aufgabe anhand ihrer ID mit Bestätigung.
 def remove_task(task_id):
-    if 1 <= task_id <= len(tasks):
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tasks WHERE id=?', (task_id,))
+    task = cursor.fetchone()
+    if task:
         confirm = input(t("confirm_delete")).strip().lower()
         if confirm == 'y':
-            tasks.pop(task_id - 1)
-            save_tasks()
+            cursor.execute('DELETE FROM tasks WHERE id=?', (task_id,))
+            conn.commit()
+            colored_print(t("tasks_saved"), Fore.GREEN)
         else:
             colored_print(t("delete_cancelled"), Fore.YELLOW)
     else:
         colored_print(t("invalid_task_number"), Fore.RED)
+    conn.close()
 
 # Marks a task as completed by its ID.
 # Markiert eine Aufgabe anhand ihrer ID als erledigt.
 def complete_task(task_id):
-    if 1 <= task_id <= len(tasks):
-        tasks[task_id - 1]["completed"] = True
-        save_tasks()
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tasks WHERE id=?', (task_id,))
+    task = cursor.fetchone()
+    if task:
+        cursor.execute('UPDATE tasks SET status=? WHERE id=?', ('completed', task_id))
+        conn.commit()
+        colored_print(t("tasks_saved"), Fore.GREEN)
     else:
         colored_print(t("invalid_task_number"), Fore.RED)
+    conn.close()
 
 # Adds a priority to a task by its ID.
 # Fügt einer Aufgabe anhand ihrer ID eine Priorität hinzu.
@@ -143,128 +183,175 @@ def add_priority(task_id, priority):
     if priority.lower() not in ['high', 'medium', 'low']:
         colored_print(t("invalid_priority"), Fore.RED)
         return
-    if 1 <= task_id <= len(tasks):
-        tasks[task_id - 1]["priority"] = priority.lower()
-        save_tasks()
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tasks WHERE id=?', (task_id,))
+    task = cursor.fetchone()
+    if task:
+        cursor.execute('UPDATE tasks SET priority=? WHERE id=?', (priority.lower(), task_id))
+        conn.commit()
+        colored_print(t("tasks_saved"), Fore.GREEN)
     else:
         colored_print(t("invalid_task_number"), Fore.RED)
+    conn.close()
 
 # Removes the priority from a task by its ID.
 # Entfernt die Priorität einer Aufgabe anhand ihrer ID.
 def remove_priority(task_id):
-    if 1 <= task_id <= len(tasks):
-        tasks[task_id - 1]["priority"] = None
-        save_tasks()
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tasks WHERE id=?', (task_id,))
+    task = cursor.fetchone()
+    if task:
+        cursor.execute('UPDATE tasks SET priority=? WHERE id=?', (None, task_id))
+        conn.commit()
+        colored_print(t("tasks_saved"), Fore.GREEN)
     else:
         colored_print(t("invalid_task_number"), Fore.RED)
+    conn.close()
 
 # Adds a due date to a task by its ID.
 # Fügt einer Aufgabe anhand ihrer ID ein Fälligkeitsdatum hinzu.
 def add_due_date(task_id, due_date):
-    if 1 <= task_id <= len(tasks):
-        tasks[task_id - 1]["due_date"] = due_date
-        save_tasks()
+    if not validate_due_date(due_date):
+        return
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tasks WHERE id=?', (task_id,))
+    task = cursor.fetchone()
+    if task:
+        cursor.execute('UPDATE tasks SET due_date=? WHERE id=?', (due_date, task_id))
+        conn.commit()
+        colored_print(t("tasks_saved"), Fore.GREEN)
     else:
         colored_print(t("invalid_task_number"), Fore.RED)
+    conn.close()
 
 # Removes the due date from a task by its ID.
 # Entfernt das Fälligkeitsdatum einer Aufgabe anhand ihrer ID.
 def remove_due_date(task_id):
-    if 1 <= task_id <= len(tasks):
-        tasks[task_id - 1]["due_date"] = None
-        save_tasks()
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tasks WHERE id=?', (task_id,))
+    task = cursor.fetchone()
+    if task:
+        cursor.execute('UPDATE tasks SET due_date=? WHERE id=?', (None, task_id))
+        conn.commit()
+        colored_print(t("tasks_saved"), Fore.GREEN)
     else:
         colored_print(t("invalid_task_number"), Fore.RED)
+    conn.close()
 
 # Searches for tasks containing the given keyword.
 # Sucht nach Aufgaben, die das angegebene Schlüsselwort enthalten.
 def search_tasks(keyword):
-    results = [task for task in tasks if keyword.lower() in task["description"].lower()]
-    if not results:
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tasks WHERE description LIKE ?', ('%' + keyword + '%',))
+    tasks = cursor.fetchall()
+    conn.close()
+    if not tasks:
         colored_print(t("task_not_found"), Fore.YELLOW)
         return
-    for i, task in enumerate(results):
-        status = "✓" if task["completed"] else " "
-        priority = f"[{task['priority']}]" if task["priority"] else ""
-        due_date = f"(Due: {task['due_date']})" if task["due_date"] else ""
-        color = Fore.GREEN if task["completed"] else Fore.WHITE
-        if not task["completed"] and task["priority"] == "high":
+    for task in tasks:
+        status = "✓" if task[4] == 'completed' else " "
+        priority = f"[{task[2]}]" if task[2] else ""
+        due_date = f"(Due: {task[3]})" if task[3] else ""
+        color = Fore.GREEN if task[4] == 'completed' else Fore.WHITE
+        if task[4] != 'completed' and task[2] == "high":
             color = Fore.RED
-        elif not task["completed"] and task["priority"] == "medium":
+        elif task[4] != 'completed' and task[2] == "medium":
             color = Fore.YELLOW
-        colored_print(f"{i+1}. [{status}] {task['description']} {priority} {due_date}", color)
+        colored_print(f"{task[0]}. [{status}] {task[1]} {priority} {due_date}", color)
 
 # Edits the description, priority, or due date of a task by its ID.
 # Bearbeitet die Beschreibung, Priorität oder das Fälligkeitsdatum einer Aufgabe anhand ihrer ID.
 def edit_task(task_id):
-    if 1 <= task_id <= len(tasks):
-        task = tasks[task_id - 1]
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM tasks WHERE id=?', (task_id,))
+    task = cursor.fetchone()
+    if task:
         new_description = input(t("enter_new_description"))
         if new_description:
-            task["description"] = new_description
+            cursor.execute('UPDATE tasks SET description=? WHERE id=?', (new_description, task_id))
         new_priority = input(t("enter_priority"))
         if new_priority.lower() in ['high', 'medium', 'low']:
-            task["priority"] = new_priority.lower()
+            cursor.execute('UPDATE tasks SET priority=? WHERE id=?', (new_priority.lower(), task_id))
         new_due_date = input(t("enter_due_date"))
-        if new_due_date:
-            task["due_date"] = new_due_date
-        save_tasks()
+        if new_due_date and validate_due_date(new_due_date):
+            cursor.execute('UPDATE tasks SET due_date=? WHERE id=?', (new_due_date, task_id))
+        conn.commit()
+        colored_print(t("tasks_saved"), Fore.GREEN)
     else:
         colored_print(t("invalid_task_number"), Fore.RED)
+    conn.close()
 
 # Sorts tasks by priority, due date, or status.
 # Sortiert Aufgaben nach Priorität, Fälligkeitsdatum oder Status.
 def sort_tasks(option):
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
     if option == "priority":
-        tasks.sort(key=lambda x: (x["priority"] is None, x["priority"]))
+        cursor.execute('SELECT * FROM tasks ORDER BY priority IS NULL, priority')
     elif option == "due_date":
-        tasks.sort(key=lambda x: (x["due_date"] is None, x["due_date"]))
+        cursor.execute('SELECT * FROM tasks ORDER BY due_date IS NULL, due_date')
     elif option == "status":
-        tasks.sort(key=lambda x: x["completed"])
+        cursor.execute('SELECT * FROM tasks ORDER BY status')
     else:
         colored_print(t("invalid_choice"), Fore.RED)
-    save_tasks()
+        conn.close()
+        return
+    tasks = cursor.fetchall()
+    conn.close()
+    for task in tasks:
+        status = "✓" if task[4] == 'completed' else " "
+        priority = f"[{task[2]}]" if task[2] else ""
+        due_date = f"(Due: {task[3]})" if task[3] else ""
+        color = Fore.GREEN if task[4] == 'completed' else Fore.WHITE
+        if task[4] != 'completed' and task[2] == "high":
+            color = Fore.RED
+        elif task[4] != 'completed' and task[2] == "medium":
+            color = Fore.YELLOW
+        colored_print(f"{task[0]}. [{status}] {task[1]} {priority} {due_date}", color)
 
 # Filters tasks by status or priority.
 # Filtert Aufgaben nach Status oder Priorität.
 def filter_tasks(option):
+    conn = sqlite3.connect('tasks.db')
+    cursor = conn.cursor()
     if option == "completed":
-        filtered_tasks = [task for task in tasks if task["completed"]]
+        cursor.execute('SELECT * FROM tasks WHERE status=?', ('completed',))
     elif option == "not_completed":
-        filtered_tasks = [task for task in tasks if not task["completed"]]
+        cursor.execute('SELECT * FROM tasks WHERE status=?', ('not_completed',))
     elif option in ["high", "medium", "low"]:
-        filtered_tasks = [task for task in tasks if task["priority"] == option]
+        cursor.execute('SELECT * FROM tasks WHERE priority=?', (option,))
     else:
         colored_print(t("invalid_choice"), Fore.RED)
+        conn.close()
         return
-    for i, task in enumerate(filtered_tasks):
-        status = "✓" if task["completed"] else " "
-        priority = f"[{task['priority']}]" if task["priority"] else ""
-        due_date = f"(Due: {task['due_date']})" if task["due_date"] else ""
-        color = Fore.GREEN if task["completed"] else Fore.WHITE
-        if not task["completed"] and task["priority"] == "high":
+    tasks = cursor.fetchall()
+    conn.close()
+    for task in tasks:
+        status = "✓" if task[4] == 'completed' else " "
+        priority = f"[{task[2]}]" if task[2] else ""
+        due_date = f"(Due: {task[3]})" if task[3] else ""
+        color = Fore.GREEN if task[4] == 'completed' else Fore.WHITE
+        if task[4] != 'completed' and task[2] == "high":
             color = Fore.RED
-        elif not task["completed"] and task["priority"] == "medium":
+        elif task[4] != 'completed' and task[2] == "medium":
             color = Fore.YELLOW
-        colored_print(f"{i+1}. [{status}] {task['description']} {priority} {due_date}", color)
+        colored_print(f"{task[0]}. [{status}] {task[1]} {priority} {due_date}", color)
 
-# Saves the current tasks to a JSON file.
-# Speichert die aktuellen Aufgaben in einer JSON-Datei.
-def save_tasks():
-    with open("pytodo.json", "w") as file:
-        json.dump(tasks, file, indent=4)
-    colored_print(t("tasks_saved"), Fore.GREEN)
-
-# Loads tasks from a JSON file if it exists.
-# Lädt Aufgaben aus einer JSON-Datei, falls diese existiert.
-def load_tasks():
-    if os.path.exists("pytodo.json"):
-        with open("pytodo.json", "r") as file:
-            global tasks
-            tasks = json.load(file)
-        colored_print(t("tasks_loaded"), Fore.GREEN)
-    else:
-        colored_print(t("no_saved_tasks"), Fore.YELLOW)
+# Validates the due date format.
+# Validiert das Fälligkeitsdatum-Format.
+def validate_due_date(due_date):
+    try:
+        datetime.strptime(due_date, '%Y-%m-%d')
+        return True
+    except ValueError:
+        colored_print(t("invalid_date"), Fore.RED)
+        return False
 
 # Prints the menu options.
 # Druckt die Menüoptionen.
@@ -371,7 +458,7 @@ def menu_loop():
 def main():
     global language
     init(autoreset=True)
-    load_tasks()
+    create_database()
     language = input("Choose language (en/de): ").strip().lower()
     if language not in translations:
         language = "en"
