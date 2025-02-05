@@ -91,6 +91,11 @@ translations = {
 def t(key):
     return translations[language].get(key, key)
 
+# Prints text in a specified color.
+# Druckt Text in einer angegebenen Farbe.
+def colored_print(text, color=Fore.WHITE):
+    print(f"{color}{text}{Style.RESET_ALL}")
+
 # Main function to initialize and start the program.
 # Hauptfunktion zum Initialisieren und Starten des Programms.
 def main():
@@ -101,7 +106,7 @@ def main():
     if language not in translations:
         language = "en"
     try:
-        menu_loop()
+        menu_loop(t, colored_print)
     except KeyboardInterrupt:
         colored_print(f"\n{t('goodbye')}", Fore.CYAN)
 

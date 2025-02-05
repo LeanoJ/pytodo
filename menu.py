@@ -1,3 +1,4 @@
+from colorama import Fore
 from tasks import add_task, list_tasks, remove_task, complete_task, add_priority, remove_priority, add_due_date, remove_due_date, search_tasks, edit_task, sort_tasks, filter_tasks
 
 # Prints the menu options.
