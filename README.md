@@ -42,6 +42,22 @@ PYTODO is a simple command-line based task management application. It allows use
 2. Choose your preferred language (English or German).
 3. Follow the on-screen menu to manage your tasks.
 
+## Docker Usage
+Docker allows you to run PYTODO without installing Python or any dependencies on your local machine. This is useful when:
+- You don't want to install Python on your system
+- You want to avoid dependency conflicts
+- You need a consistent environment across different machines
+
+1. Build the Docker image:
+    ```sh
+    docker build -t pytodo .
+    ```
+2. Run the Docker container:
+    ```sh
+    docker run -it pytodo
+    ```
+3. Follow the on-screen menu to manage your tasks.
+
 ## Menu Options
 - `1. Add new task`: Add a new task with a description.
 - `2. List all tasks`: List all tasks with their status, priority, and due date.

@@ -49,7 +49,7 @@ def remove_task(task_id, t):
     task = cursor.fetchone()
     if task:
         confirm = input(t("confirm_delete")).strip().lower()
-        if confirm == 'y':
+        if confirm in ['y', 'j']:
             cursor.execute('DELETE FROM tasks WHERE id=?', (task_id,))
             conn.commit()
             colored_print(t("tasks_saved"), Fore.GREEN)
