@@ -1,62 +1,84 @@
 # PYTODO
 
 ## Description
-PYTODO is a simple command-line based task management application. It allows users to add, list, remove, complete, prioritize, and set due dates for tasks. The application supports multilingual functionality (English and German) and provides color-coded output for better readability. Tasks are stored in a SQLite database for efficient data management.
+PYTODO is a command-line based task management application with MySQL database backend. It runs in Kubernetes, allowing for scalable and persistent task management. The application supports multilingual functionality (English and German) and provides color-coded output for better readability.
 
 ## Features
-- Add new tasks
-- List all tasks
-- Remove tasks with confirmation
-- Mark tasks as complete
-- Add priority to tasks (high, medium, low)
-- Remove priority from tasks
-- Add due dates to tasks
-- Remove due dates from tasks
-- Search tasks by keyword
-- Edit task description, priority, and due date
-- Sort tasks by priority, due date, or status
-- Filter tasks by status (completed/not completed) or priority (high/medium/low)
+- Add, list, remove, and complete tasks
+- Priority management (high, medium, low)
+- Due date management
+- Search, edit, sort, and filter tasks
 - Multilingual support (English and German)
-- Color-coded output for better readability
-- Efficient data storage using SQLite
+- Color-coded output
+- MySQL database backend
+- Kubernetes deployment support
+- Docker containerization
+
+## Prerequisites
+- Docker
+- Kubernetes cluster (e.g., Minikube)
+- kubectl CLI tool
 
 ## Installation
+
+### Local Development
 1. Clone the repository:
-    ```sh
-    git clone https://github.com/LeanoJ/pytodo.git
-    ```
-2. Navigate to the project directory:
-    ```sh
-    cd pytodo
-    ```
-3. Install the required dependencies:
-    ```sh
-    pip install colorama
-    ```
+```sh
+git clone https://github.com/LeanoJ/pytodo.git
+cd pytodo
+```
+
+2. Install dependencies:
+```sh
+pip install -r requirements.txt
+```
+
+### Kubernetes Deployment
+1. Start your Kubernetes cluster (e.g., Minikube)
+
+2. Create necessary resources:
+```sh
+# Create MySQL secret
+kubectl apply -f ./minikube/mysql-secret.yaml
+
+# Create MySQL PVC
+kubectl apply -f ./minikube/mysql-pvc.yaml
+
+# Deploy MySQL
+kubectl apply -f ./minikube/mysql-service.yaml
+kubectl apply -f ./minikube/mysql-deployment.yaml
+
+# Deploy PYTODO
+kubectl apply -f ./minikube/pytodo-deployment.yaml
+```
+
+3. Build and deploy the application:
+```sh
+# Build Docker image
+eval $(minikube docker-env)  # Only for Minikube
+docker build -t pytodo:latest .
+```
 
 ## Usage
-1. Run the application:
-    ```sh
-    python pytodo.py
-    ```
-2. Choose your preferred language (English or German).
-3. Follow the on-screen menu to manage your tasks.
 
-## Docker Usage
-Docker allows you to run PYTODO without installing Python or any dependencies on your local machine. This is useful when:
-- You don't want to install Python on your system
-- You want to avoid dependency conflicts
-- You need a consistent environment across different machines
+### Kubernetes Environment
+1. Connect to the PYTODO pod:
+```sh
+kubectl exec -it <pytodo-pod-name> -- bash
+```
 
-1. Build the Docker image:
-    ```sh
-    docker build -t pytodo .
-    ```
-2. Run the Docker container:
-    ```sh
-    docker run -it pytodo
-    ```
-3. Follow the on-screen menu to manage your tasks.
+2. Run the application:
+```sh
+python pytodo.py
+```
+
+## Configuration
+The application uses the following environment variables:
+- `MYSQL_HOST`: MySQL server hostname (default: mysql-service)
+- `MYSQL_USER`: MySQL username (default: root)
+- `MYSQL_PASSWORD`: MySQL password (from Kubernetes secret)
+- `MYSQL_DATABASE`: MySQL database name (default: pytododb)
+- `LANGUAGE`: Interface language (en/de, default: en)
 
 ## Menu Options
 - `1. Add new task`: Add a new task with a description.
@@ -98,6 +120,13 @@ Enter your choice (0-12) or 'm' for menu: 2
 Enter your choice (0-12) or 'm' for menu: 0
 Goodbye!
 ```
+
+## Architecture
+- Frontend: Python CLI application
+- Database: MySQL 8.0
+- Container: Docker
+- Orchestration: Kubernetes
+- Persistence: Kubernetes PersistentVolumeClaim
 
 ## License
 This project is licensed under the MIT License.
