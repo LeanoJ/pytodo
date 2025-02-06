@@ -40,12 +40,12 @@ jobs:
 
     - name: Deploy to Minikube
       run: |
-        kubectl apply -f minikube/mysql-pvc.yaml
-        kubectl apply -f minikube/mysql-secret.yaml
-        kubectl apply -f minikube/mysql-deployment.yaml
-        kubectl apply -f minikube/mysql-service.yaml
-        kubectl apply -f minikube/pytodo-deployment.yaml
-        kubectl apply -f minikube/pytodo-service.yaml
+        kubectl apply -f ./minikube/mysql-pvc.yaml
+        kubectl apply -f ./minikube/mysql-secret.yaml
+        kubectl apply -f ./minikube/mysql-deployment.yaml
+        kubectl apply -f ./minikube/mysql-service.yaml
+        kubectl apply -f ./minikube/pytodo-deployment.yaml
+        kubectl apply -f ./minikube/pytodo-service.yaml
         minikube service pytodo-service
 
     - name: Verify deployment
