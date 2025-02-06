@@ -28,6 +28,34 @@ jobs:
     - name: Pull the private Docker image
       run: docker pull ghcr.io/${{ env.REPO_OWNER }}/pytodo:latest
 
-    - name: Deploy to Kubernetes
+    - name: Run the Docker container
       run: |
-        kubectl set image deployment/pytodo-deployment pytodo=ghcr.io/${{ env.REPO_OWNER }}/pytodo:latest
+        docker run -d --name pytodo-container -p 5000:5000 ghcr.io/${{ github.repository_owner }}/pytodo:latest
+
+    - name: Verify container is running
+      run: docker ps -a
+
+    - name: Clean up
+      run: docker rm -f pytodo-container
+
+    - name: Deploy to Minikube
+      run: |
+        kubectl apply -f minikube/mysql-pvc.yaml
+        kubectl apply -f minikube/mysql-secret.yaml
+        kubectl apply -f minikube/mysql-deployment.yaml
+        kubectl apply -f minikube/mysql-service.yaml
+        kubectl apply -f minikube/pytodo-deployment.yaml
+        kubectl apply -f minikube/pytodo-service.yaml
+        minikube service pytodo-service
+
+    - name: Verify deployment
+      run: kubectl get all
+    
+    - name: Clean up
+      run: |
+        kubectl delete deployment pytodo-deployment
+        kubectl delete service pytodo-service
+        kubectl delete deployment mysql-deployment
+        kubectl delete service mysql-service
+        kubectl delete secret mysql-secret
+        kubectl delete pvc mysql-pvc
