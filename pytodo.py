@@ -1,5 +1,7 @@
 import json
 import os
+import sys
+import time
 from colorama import init, Fore, Style
 from storage import create_database
 from menu import menu_loop
@@ -102,13 +104,21 @@ def main():
     global language
     init(autoreset=True)
     create_database()
-    language = input("Choose language (en/de): ").strip().lower()
-    if language not in translations:
-        language = "en"
-    try:
-        menu_loop(t, colored_print)
-    except KeyboardInterrupt:
-        colored_print(f"\n{t('goodbye')}", Fore.CYAN)
+    language = os.getenv('LANGUAGE', 'en').strip().lower()
+    print(f"Language set to: {language}")
+
+    if sys.stdin.isatty():
+        try:
+            menu_loop(t, colored_print)
+        except KeyboardInterrupt:
+            colored_print(f"\n{t('goodbye')}", Fore.CYAN)
+    else:
+        colored_print("Running in non-interactive mode. Waiting for docker exec connection...", Fore.YELLOW)
+        try:
+            while True:
+                time.sleep(1)  # Reduziert CPU-Auslastung
+        except KeyboardInterrupt:
+            colored_print(f"\n{t('goodbye')}", Fore.CYAN)
 
 if __name__ == "__main__":
     main()
