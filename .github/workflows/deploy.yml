@@ -1,23 +1,24 @@
 name: CI/CD Pipeline
+
 on:
   push:
     branches:
       - main
+
 jobs:
-  build:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout Code
       uses: actions/checkout@v2
 
-    - name: Build Docker Image
-      run: docker build -t your-dockerhub-user/pytodo:latest .
+    - name: Log in to GitHub Container Registry
+      run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-    - name: Push to Docker Hub
-      run: |
-        docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-        docker push your-dockerhub-user/pytodo:latest
+    - name: Pull the private Docker image
+      run: docker pull ghcr.io/${{ github.repository_owner }}/pytodo:latest
 
     - name: Deploy to Kubernetes
       run: |
-        kubectl apply -f pytodo-deployment.yaml
+        kubectl set image deployment/pytodo-deployment pytodo=ghcr.io/${{ github.repository_owner }}/pytodo:latest
