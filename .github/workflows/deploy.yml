@@ -30,7 +30,7 @@ jobs:
 
     - name: Run the Docker container
       run: |
-        docker run -d --name pytodo-container -p 5000:5000 ghcr.io/${{ github.repository_owner }}/pytodo:latest
+        docker run -d --name pytodo-container -p 5000:5000 ghcr.io/${{ env.REPO_OWNER }}/pytodo:latest
 
     - name: Verify container is running
       run: docker ps -a
