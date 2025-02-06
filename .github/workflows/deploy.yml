@@ -13,17 +13,21 @@ jobs:
     - name: Checkout Code
       uses: actions/checkout@v2
 
+    - name: Set lowercase repository owner
+      id: repo_owner
+      run: echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
     - name: Log in to GitHub Container Registry
-      run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      run: echo "${{ secrets.CR_PAT }}" | docker login ghcr.io -u ${{ env.REPO_OWNER }} --password-stdin
 
     - name: Build and push Docker image
       run: |
-        docker build -t ghcr.io/leanonj/pytodo:latest .
-        docker push ghcr.io/leanonj/pytodo:latest
+        docker build -t ghcr.io/${{ env.REPO_OWNER }}/pytodo:latest .
+        docker push ghcr.io/${{ env.REPO_OWNER }}/pytodo:latest
 
     - name: Pull the private Docker image
-      run: docker pull ghcr.io/leanonj/pytodo:latest
+      run: docker pull ghcr.io/${{ env.REPO_OWNER }}/pytodo:latest
 
     - name: Deploy to Kubernetes
       run: |
-        kubectl set image deployment/pytodo-deployment pytodo=ghcr.io/${{ github.repository_owner }}/pytodo:latest
+        kubectl set image deployment/pytodo-deployment pytodo=ghcr.io/${{ env.REPO_OWNER }}/pytodo:latest
