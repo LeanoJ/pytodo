@@ -38,7 +38,21 @@ jobs:
     - name: Clean up
       run: docker rm -f pytodo-container
 
-    - name: Deploy to Minikube
+    - name: Install Minikube
+      run: |
+        curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+        sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+    - name: Start Minikube
+      run: minikube start --driver=docker
+
+    - name: Set kubeconfig
+      run: |
+        mkdir -p ~/.kube
+        minikube kubeconfig > ~/.kube/config
+        export KUBECONFIG=~/.kube/config
+
+    - name: Apply Kubernetes configurations
       run: |
         kubectl apply -f ./minikube/mysql-pvc.yaml
         kubectl apply -f ./minikube/mysql-secret.yaml
@@ -46,10 +60,11 @@ jobs:
         kubectl apply -f ./minikube/mysql-service.yaml
         kubectl apply -f ./minikube/pytodo-deployment.yaml
         kubectl apply -f ./minikube/pytodo-service.yaml
-        minikube service pytodo-service
 
-    - name: Verify deployment
-      run: kubectl get all
+    - name: Verify Pods and Services
+      run: |
+        kubectl get pods
+        kubectl get svc
     
     - name: Clean up
       run: |
