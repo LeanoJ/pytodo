@@ -46,11 +46,11 @@ jobs:
     - name: Start Minikube
       run: minikube start --driver=docker
 
-    - name: Set kubeconfig
+    - name: Configure Kubeconfig
       run: |
-        mkdir -p ~/.kube
-        minikube kubeconfig > ~/.kube/config
-        export KUBECONFIG=~/.kube/config
+          mkdir -p ~/.kube
+          minikube kubectl -- config view --raw > ~/.kube/config
+          export KUBECONFIG=~/.kube/config
 
     - name: Apply Kubernetes configurations
       run: |
