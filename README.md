@@ -116,7 +116,7 @@ Enter your choice (0-12) or 'm' for menu: 1
 Enter task description: Finish the project
 Tasks saved successfully.
 Enter your choice (0-12) or 'm' for menu: 2
-1. [ ] Finish the project
+1. [x] Finish the project
 Enter your choice (0-12) or 'm' for menu: 0
 Goodbye!
 ```
